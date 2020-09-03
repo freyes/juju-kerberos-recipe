@@ -1,4 +1,7 @@
 #!/bin/bash -ex
+#
+# This script relies on a model named "kerberos" that contains a ipa server already configured.
+#
 
 IPA_UNIT=ipa/1
 
