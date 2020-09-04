@@ -1,0 +1,10 @@
+applications:
+  keystone-kerberos:
+    charm: cs:keystone-kerberos
+    options:
+      kerberos-realm: "LAB.MAAS"
+      kerberos-server: "192-168-11-217.lab.maas"
+    resources:
+      keystone_keytab: "./keystone.keytab"
+relations:
+ - [keystone, keystone-kerberos]
