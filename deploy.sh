@@ -5,6 +5,7 @@ MAAS_HOST=192.168.11.2
 REALM=${MAAS_DOMAIN^^}
 IPA_PASSWORD=ubuntu11
 
+test -f vars.sh && . vars.sh
 
 #deploying freeipa
 juju deploy ./lab-bundle.yaml
@@ -14,15 +15,16 @@ IPA_ADDRESS=$(juju run --unit ipa/leader unit-get public-address)
 IPA_HOSTNAME=$(echo $IPA_ADDRESS | sed 's/\./-/g').$MAAS_DOMAIN
 
 # create dns record in maas
-ssh ubuntu@$MAAS_HOST "maas admin dnsresources create fqdn=$IPA_HOSTNAME ip_addresses=$IPA_ADDRESS"
+ssh ubuntu@$MAAS_HOST "dig +short $IPA_HOSTNAME || maas admin dnsresources create fqdn=$IPA_HOSTNAME ip_addresses=$IPA_ADDRESS"
 
-juju ssh $IPA_ADDRESS "sudo apt update && sudo apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install -yq freeipa-server"
-juju ssh $IPA_ADDRESS "ipa-server-install -a $IPA_PASSWORD --hostname=$IPA_HOSTNAME -r $REALM -p ubuntu11 -n $MAAS_DOMAIN -U"
+juju ssh $IPA_ADDRESS "dpkg -l freeipa-server || (sudo add-apt-repository -yu ppa:freyes/freeipa && \
+                                                  sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install -yq freeipa-server)"
+juju ssh $IPA_ADDRESS "test -f /home/ubuntu/.freeipa-installed || (sudo ipa-server-install -a $IPA_PASSWORD --hostname=$IPA_HOSTNAME -r $REALM -p ubuntu11 -n $MAAS_DOMAIN -U && touch /home/ubuntu/.freeipa-installed)"
 
 # test the IPA was configured correctly
-juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | kinit admin && klist && ipa user-find admin"
+juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | sudo kinit admin && sudo klist && sudo ipa user-find admin"
 
-read -t 30 -p "Resuming in 30s..."
+read -t 30 -p "Resuming in 30s..." || echo "carry on"
 
 juju deploy --overlay overlay_keystone.yaml ./lab-bundle.yaml
 juju wait
@@ -37,7 +39,8 @@ juju ssh $IPA_ADDRESS "sudo ipa user-find jane || sudo ipa user-add jane --first
 juju scp $IPA_ADDRESS:/tmp/keystone.keytab ./
 
 # -- add keystone-kerberos now that we have the keytab.
-juju deploy --overlay ./overlay_kerberos.yaml ./lab-bundle.yaml
+sed "s/__LDAP_SERVER__/$IPA_ADDRESS/g" overlay_kerberos.yaml.tpl > overlay_kerberos.yaml
+juju deploy --overlay ./overlay_kerberos.yaml --overlay overlay_keystone.yaml ./lab-bundle.yaml
 
 juju wait
 
