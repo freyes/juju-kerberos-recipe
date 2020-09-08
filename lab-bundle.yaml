@@ -1,49 +1,5 @@
 series: bionic
-machines:
-  0:
-variables:
-  openstack-origin: &openstack-origin distro
 applications:
-  mysql:
-    charm: cs:bionic/percona-cluster
+  ipa:
+    charm: cs:ubuntu
     num_units: 1
-    options:
-      innodb-buffer-pool-size: 512M
-      wait-timeout: 3600
-      performance-schema: True
-  keystone:
-    charm:  cs:keystone
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-      worker-multiplier: 0.25
-      preferred-api-version: 3
-    to: [0]
-  keystone-ldap:
-    charm:  cs:keystone-ldap
-    num_units: 0
-    options:
-      ldap-server: "ldap://192.168.11.213"
-      ldap-user: "cn=admin,dc=test,dc=com"
-      ldap-password: "crapper"
-      ldap-suffix: "dc=test,dc=com"
-      ldap-readonly: true
-      domain-name: "userdomain"
-  openstack-dashboard:
-    charm: cs:openstack-dashboard
-    num_units: 1
-    expose: true
-    options:
-      openstack-origin: *openstack-origin
-      webroot: "/"
-      password-retrieve: True
-      secret: "encryptcookieswithme"
-      endpoint-type: publicURL
-relations:
-- - keystone:shared-db
-  - mysql:shared-db
-- - openstack-dashboard:identity-service
-  - keystone:identity-service
-- - openstack-dashboard:shared-db
-  - mysql:shared-db
-- [keystone, keystone-ldap]
