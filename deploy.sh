@@ -22,6 +22,7 @@ juju ssh $IPA_ADDRESS "dpkg -l freeipa-server || (sudo add-apt-repository -yu pp
 juju ssh $IPA_ADDRESS "test -f /home/ubuntu/.freeipa-installed || (sudo ipa-server-install -a $IPA_PASSWORD --hostname=$IPA_HOSTNAME -r $REALM -p ubuntu11 -n $MAAS_DOMAIN -U && touch /home/ubuntu/.freeipa-installed)"
 
 # test the IPA was configured correctly
+juju ssh $IPA_ADDRESS "sudo kdestroy"
 juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | sudo kinit admin && sudo klist && sudo ipa user-find admin"
 
 read -t 30 -p "Resuming in 30s..." || echo "carry on"
@@ -78,6 +79,6 @@ openstack role list --domain k8s -f value -c Name | grep k8s-users  || openstack
 openstack role list --domain k8s -f value -c Name | grep k8s-viewers || openstack role create --domain k8s k8s-viewers
 openstack project list --domain k8s -f value -c Name | grep k8s || openstack project create --domain k8s k8s
 
-juju deploy --overlay ./overlay_kerberos.yaml --overlay ./overlay_k8s.yaml ./lab-bundle.yaml
+juju deploy --overlay ./overlay_kerberos.yaml --overlay overlay_keystone.yaml --overlay ./overlay_k8s.yaml ./lab-bundle.yaml
 juju wait
 notify-send -u critical "$0: deployment ready" || echo "deployment ready"
