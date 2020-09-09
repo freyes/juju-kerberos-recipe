@@ -2,3 +2,4 @@ admin.rc
 k8s-user.rc
 keystone.keytab
 overlay_kerberos.yaml
+krb5.conf

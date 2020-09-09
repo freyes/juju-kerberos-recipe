@@ -20,10 +20,14 @@ ssh ubuntu@$MAAS_HOST "dig +short $IPA_HOSTNAME || maas admin dnsresources creat
 juju ssh $IPA_ADDRESS "dpkg -l freeipa-server || (sudo add-apt-repository -yu ppa:freyes/freeipa && \
                                                   sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install -yq freeipa-server)"
 juju ssh $IPA_ADDRESS "test -f /home/ubuntu/.freeipa-installed || (sudo ipa-server-install -a $IPA_PASSWORD --hostname=$IPA_HOSTNAME -r $REALM -p ubuntu11 -n $MAAS_DOMAIN -U && touch /home/ubuntu/.freeipa-installed)"
+juju ssh $IPA_ADDRESS "sudo touch /etc/krb5kdc/kadm5.acl && sudo systemctl restart krb5-admin-server.service"
 
 # test the IPA was configured correctly
 juju ssh $IPA_ADDRESS "sudo kdestroy"
-juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | sudo kinit admin && sudo klist && sudo ipa user-find admin"
+juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | sudo kinit admin && \
+     sudo klist && \
+     sudo ipa user-find admin && \
+     sudo ipa pwpolicy-mod --maxlife=0 --minlife=0 global_policy"
 
 read -t 30 -p "Resuming in 30s..." || echo "carry on"
 
@@ -44,6 +48,10 @@ sed "s/__LDAP_SERVER__/$IPA_ADDRESS/g" overlay_kerberos.yaml.tpl > overlay_kerbe
 juju deploy --overlay ./overlay_kerberos.yaml --overlay overlay_keystone.yaml ./lab-bundle.yaml
 
 juju wait
+
+# generate kerberos configuration
+sed "s/__IPA_HOSTNAME__/$IPA_HOSTNAME/g" krb5.conf.tpl > krb5.conf
+sed -i "s/__REALM__/$REALM/g" krb5.conf
 
 cat <<EOF> k8s-user.rc
 export OS_USERNAME=admin
@@ -81,4 +89,9 @@ openstack project list --domain k8s -f value -c Name | grep k8s || openstack pro
 
 juju deploy --overlay ./overlay_kerberos.yaml --overlay overlay_keystone.yaml --overlay ./overlay_k8s.yaml ./lab-bundle.yaml
 juju wait
+
+echo "to get a ticket from kerberos use:"
+echo "    sudo apt install krb5-user"
+echo "    KRB5_CONFIG=./krb5.conf kinit <USERNAME>"
+
 notify-send -u critical "$0: deployment ready" || echo "deployment ready"
