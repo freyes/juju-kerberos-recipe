@@ -14,6 +14,8 @@ applications:
       enable-keystone-authorization: "true"
       authorization-mode: "RBAC,Node"
       api-extra-args: "audit-log-path=/var/snap/kube-apiserver/common/k8s-audit.log"
+      proxy-extra-args: "proxy-mode=userspace"
+      channel: 1.17/stable
   containerd:
     charm: cs:~containers/containerd
   kubernetes-worker:
@@ -23,6 +25,7 @@ applications:
     options:
       allow-privileged: "true"
       channel: 1.17/stable
+      proxy-extra-args: "proxy-mode=userspace"
   etcd:
     charm: cs:etcd
     num_units: 1
