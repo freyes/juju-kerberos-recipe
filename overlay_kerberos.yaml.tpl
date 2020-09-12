@@ -21,6 +21,7 @@ applications:
           query_scope: sub,
           user_objectclass: person,
           user_name_attribute: uid,
+          user_default_project_id_attribute: st,
           group_tree_dn: 'cn=groups,cn=accounts,dc=lab,dc=maas',
           group_objectclass: posixgroup,
           group_id_attribute: cn,
