@@ -19,7 +19,8 @@ applications:
       preferred-api-version: 3
       debug: True
   openstack-dashboard:
-    charm: cs:openstack-dashboard
+    #charm: cs:openstack-dashboard
+    charm: cs:~openstack-charmers-next/openstack-dashboard
     num_units: 1
     expose: true
     options:
