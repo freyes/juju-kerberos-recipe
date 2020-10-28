@@ -2,7 +2,7 @@ applications:
   keystone-kerberos:
     charm: cs:keystone-kerberos
     options:
-      kerberos-realm: "LAB.MAAS"
+      kerberos-realm: "__REALM__"
       kerberos-server: "__LDAP_SERVER__"
     resources:
       keystone_keytab: "./keystone.keytab"
@@ -11,18 +11,18 @@ applications:
     num_units: 0
     options:
       ldap-server: "ldap://__LDAP_SERVER__"
-      ldap-user: "uid=admin,cn=users,cn=compat,dc=lab,dc=maas"
-      ldap-password: "ubuntu11"
-      ldap-suffix: "cn=compat,dc=lab,dc=maas"
+      ldap-user: "uid=admin,cn=users,cn=compat,__LDAP_SUFFIX__"
+      ldap-password: "__LDAP_PASSWORD__"
+      ldap-suffix: "cn=compat,__LDAP_SUFFIX__"
       ldap-readonly: true
       domain-name: "k8s"
       ldap-config-flags: "{
-          user_tree_dn: 'cn=users,cn=accounts,dc=lab,dc=maas',
+          user_tree_dn: 'cn=users,cn=accounts,__LDAP_SUFFIX__',
           query_scope: sub,
           user_objectclass: person,
           user_name_attribute: uid,
           user_default_project_id_attribute: st,
-          group_tree_dn: 'cn=groups,cn=accounts,dc=lab,dc=maas',
+          group_tree_dn: 'cn=groups,cn=accounts,__LDAP_SUFFIX__',
           group_objectclass: posixgroup,
           group_id_attribute: cn,
           group_name_attribute: cn,

@@ -4,6 +4,7 @@ MAAS_DOMAIN=lab.maas
 MAAS_HOST=192.168.11.2
 REALM=${MAAS_DOMAIN^^}
 IPA_PASSWORD=ubuntu11
+LDAP_SUFFIX="dc=lab,dc=maas"
 
 test -f vars.sh && . vars.sh
 
@@ -12,11 +13,14 @@ juju deploy ./lab-bundle.yaml
 juju wait
 
 IPA_ADDRESS=$(juju run --unit ipa/leader unit-get public-address)
-IPA_HOSTNAME=$(echo $IPA_ADDRESS | sed 's/\./-/g').$MAAS_DOMAIN
+IPA_HOSTNAME=$(juju ssh $IPA_ADDRESS "dig +short -x $IPA_ADDRESS | grep juju" | tr -d '\r')
+IPA_HOSTNAME=$(echo "${IPA_HOSTNAME%?}")
 
 # create dns record in maas
-ssh ubuntu@$MAAS_HOST "dig +short $IPA_HOSTNAME || maas admin dnsresources create fqdn=$IPA_HOSTNAME ip_addresses=$IPA_ADDRESS"
+# ssh ubuntu@$MAAS_HOST "dig +short $IPA_HOSTNAME || maas admin dnsresources create fqdn=$IPA_HOSTNAME ip_addresses=$IPA_ADDRESS"
 
+#juju ssh $IPA_ADDRESS "sudo hostnamectl set-hostname $IPA_HOSTNAME && sudo reboot"
+#sleep 60
 juju ssh $IPA_ADDRESS "dpkg -l freeipa-server || (sudo add-apt-repository -yu ppa:freyes/freeipa && \
                                                   sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold' install -yq freeipa-server)"
 juju ssh $IPA_ADDRESS "test -f /home/ubuntu/.freeipa-installed || (sudo ipa-server-install -a $IPA_PASSWORD --hostname=$IPA_HOSTNAME -r $REALM -p ubuntu11 -n $MAAS_DOMAIN -U && touch /home/ubuntu/.freeipa-installed)"
@@ -31,7 +35,8 @@ juju ssh $IPA_ADDRESS "echo $IPA_PASSWORD | sudo kinit admin && \
 juju deploy --overlay overlay_keystone.yaml ./lab-bundle.yaml
 juju wait
 KEYSTONE_IP=$(juju run --unit keystone/leader unit-get public-address)
-KEYSTONE_HOST="$(echo $KEYSTONE_IP | sed 's/\./-/g').$MAAS_DOMAIN"
+KEYSTONE_HOST=$(juju ssh $KEYSTONE_IP "dig +short -x $KEYSTONE_IP | grep juju" | tr -d '\r')
+KEYSTONE_HOST=$(echo "${KEYSTONE_HOST%?}")
 
 # register keystone unit and get keytab
 juju ssh $IPA_ADDRESS "sudo ipa host-find --hostname=$KEYSTONE_HOST || sudo ipa host-add $KEYSTONE_HOST --ip-address=$KEYSTONE_IP"
@@ -52,6 +57,10 @@ juju ssh $IPA_ADDRESS "sudo ipa user-mod jane --state k8s" || echo "already set"
 
 # -- add keystone-kerberos now that we have the keytab.
 sed "s/__LDAP_SERVER__/$IPA_ADDRESS/g" overlay_kerberos.yaml.tpl > overlay_kerberos.yaml
+sed -i "s/__REALM__/$REALM/g" overlay_kerberos.yaml
+sed -i "s/__LDAP_PASSWORD__/$IPA_PASSWORD/g" overlay_kerberos.yaml
+sed -i "s/__LDAP_SUFFIX__/$LDAP_SUFFIX/g" overlay_kerberos.yaml
+
 juju deploy --overlay ./overlay_kerberos.yaml --overlay overlay_keystone.yaml ./lab-bundle.yaml
 
 juju wait
