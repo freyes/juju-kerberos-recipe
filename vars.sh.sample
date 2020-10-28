@@ -1,0 +1,3 @@
+REALM=VLAN10.LAN
+MAAS_DOMAIN=vlan10.lan
+LDAP_SUFFIX="dc=vlan10,dc=lan"
